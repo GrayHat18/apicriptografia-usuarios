@@ -28,7 +28,7 @@ Para ejecutar la API, ejecutar el siguiente comando:
 mvn spring-boot:run
 ```
 ## Uso de endpoints
-La API cuenta con endpoints disponibles para se consumidos, ya sea mediante `curl`, mediante una aplicación frontend o directamente con  `PostMan`. El detalle de 
+La API cuenta con endpoints disponibles para ser consumidos, ya sea mediante `curl`, mediante una aplicación frontend o directamente con  `PostMan`. El detalle de 
 los endpoints se encuentra a continuación:
 
 ### Usuarios
@@ -149,6 +149,6 @@ Para contribuir con el desarrollo de esta API, se tienen las siguientes consider
 
 ## Contacto
 Ante cualquier duda o consulta detallada respecto al desarrollo de esta API, por favor comunicarse con `GrayHat` en los siguientes canales de comunicación:
-`fabian.hernan95@gmail.com` o al instagram `@graygat18`.
+`fabian.hernan95@gmail.com` o al instagram `@grayhat18`.
 
 
