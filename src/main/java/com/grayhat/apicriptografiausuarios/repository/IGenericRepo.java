@@ -1,6 +1,6 @@
 package com.grayhat.apicriptografiausuarios.repository;
 
-import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.NoRepositoryBean;
 
 /**
@@ -10,6 +10,6 @@ import org.springframework.data.repository.NoRepositoryBean;
  * @param <ID> Parametro del id para utilizar en los metodos crud
  */
 @NoRepositoryBean
-public interface IGenericRepo<T, ID> extends CrudRepository<T, Long> {
+public interface IGenericRepo<T, ID> extends JpaRepository<T, Long> {
 
 }

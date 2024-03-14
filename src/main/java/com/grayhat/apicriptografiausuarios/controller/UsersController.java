@@ -4,13 +4,9 @@ import com.grayhat.apicriptografiausuarios.dto.UsersDto;
 import com.grayhat.apicriptografiausuarios.model.Users;
 import com.grayhat.apicriptografiausuarios.service.UsersService;
 import com.grayhat.apicriptografiausuarios.util.Mapper;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import java.util.ArrayList;
 import java.util.List;
-import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,24 +25,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class UsersController {
 
     private final UsersService usersService;
-    private final String jwtSecret;
 
     @Autowired
-    public UsersController(UsersService usersService, @Value("${jwt.secret}") String jwtSecret) {
+    public UsersController(UsersService usersService) {
         this.usersService = usersService;
-        this.jwtSecret = jwtSecret;
-    }
-
-    @GetMapping("/home")
-    public String homeController() {
-        return "Users is up and running";
     }
 
     @GetMapping("/listUsers")
     public ResponseEntity<List<UsersDto>> listUsers() {
         try {
             //Recuperamos los usuarios desde la base de datos
-            Iterable<Users> users = usersService.findAllUsers();
+            List<Users> users = usersService.findAllUsers();
 
             //Convertimos los usuarios de entidad a un objeto DTO
             List<UsersDto> usersDto = new ArrayList<>();
@@ -66,36 +55,23 @@ public class UsersController {
     @PostMapping("/register")
     public ResponseEntity<String> registerUser(@RequestBody UsersDto userDto) {
         try {
-            String[] encryptionResult = encryptPasswordUser(userDto.getPasswordHash());
-            String PasswordHash = encryptionResult[0];
-            String salt = encryptionResult[1];
-
-            String token = generateToken(userDto.getUsername());
-
             UsersDto usersDto = new UsersDto.Builder()
                     .role(userDto.getRole())
                     .firstName(userDto.getFirstName())
                     .lastName(userDto.getLastName())
                     .email(userDto.getEmail())
                     .username(userDto.getUsername())
-                    .passwordHash(PasswordHash)
-                    .salt(salt)
-                    .token(token)
+                    .passwordHash(userDto.getPasswordHash())
                     .enabled(userDto.isEnabled())
                     .build();
 
             Users user = Mapper.mapDtoToEntity(usersDto, Users.class);
+            Users savedUser = usersService.saveUser(user);
 
-            if (encryptionResult != null) {
-                Users savedUser = usersService.saveUser(user);
-
-                if (savedUser != null) {
-                    return ResponseEntity.ok("Usuario Registro Correctamente en Base de Datos");
-                } else {
-                    return ResponseEntity.badRequest().body("Datos de Usuario Invalidos");
-                }
+            if (savedUser != null) {
+                return ResponseEntity.ok("Usuario Registro Correctamente en Base de Datos");
             } else {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al encriptar contraseña");
+                return ResponseEntity.badRequest().body("Datos de Usuario Invalidos");
             }
 
         } catch (IllegalAccessException | InstantiationException e) {
@@ -104,24 +80,28 @@ public class UsersController {
         }
     }
 
-    private String[] encryptPasswordUser(String password) {
-        String salt = BCrypt.gensalt(12);
-        String encryptedPassword;
-
+    @PostMapping("/login")
+    public ResponseEntity<String> login(@RequestBody UsersDto userDto) {
         try {
-            encryptedPassword = BCrypt.hashpw(password, salt);
-        } catch (IllegalArgumentException e) {
+            UsersDto userLogged = new UsersDto.Builder()
+                    .email(userDto.getEmail())
+                    .passwordHash(userDto.getPasswordHash())
+                    .enabled(userDto.isEnabled())
+                    .build();
+
+            Users user = Mapper.mapDtoToEntity(userLogged, Users.class);
+
+            boolean loginSuccess = usersService.checkUserLogin(user.getEmail(), user.getPasswordHash());
+
+            if (loginSuccess) {
+                return ResponseEntity.ok("Usuario logueado correctamente");
+            } else {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Correo o Contraseña son inválidos");
+            }
+        } catch (IllegalAccessException | InstantiationException e) {
             e.printStackTrace(System.err);
-            return null;
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al Iniciar Sesión");
         }
-
-        return new String[]{encryptedPassword, salt};
     }
 
-    private String generateToken(String username) {
-        return Jwts.builder()
-                .setSubject(username)
-                .signWith(SignatureAlgorithm.HS512, jwtSecret)
-                .compact();
-    }
 }

@@ -14,6 +14,8 @@ import com.grayhat.apicriptografiausuarios.model.EncryptedPasswordsRoles;
 import com.grayhat.apicriptografiausuarios.model.Permissions;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * @author grayhat
@@ -86,4 +88,9 @@ public class AppConfig {
     }
 
     /*------------------------------------------------------------*/
+    
+    @Bean
+    public PasswordEncoder passwordEncoder(){
+        return new BCryptPasswordEncoder();
+    }
 }
