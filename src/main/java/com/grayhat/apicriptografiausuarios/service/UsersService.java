@@ -6,9 +6,9 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import java.util.List;
 import java.util.Optional;
+import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 /**
@@ -19,13 +19,11 @@ import org.springframework.stereotype.Service;
 public class UsersService {
 
     private final IUsersRepo usersRepo;
-    private final PasswordEncoder passwordEncoder;
     private final String jwtSecret;
 
     @Autowired
-    public UsersService(IUsersRepo usersRepo, PasswordEncoder passwordEncoder, @Value("${jwt.secret}") String jwtSecret) {
+    public UsersService(IUsersRepo usersRepo, @Value("${jwt.secret}") String jwtSecret) {
         this.usersRepo = usersRepo;
-        this.passwordEncoder = passwordEncoder;
         this.jwtSecret = jwtSecret;
     }
 
@@ -36,26 +34,36 @@ public class UsersService {
     public Optional<Users> findUserByEmail(String email) {
         return usersRepo.findByEmail(email);
     }
-    
-    public Optional<Users> findUserByUsername(String username){
+
+    public Optional<Users> findUserByUsername(String username) {
         return usersRepo.findByUsername(username);
     }
 
     public boolean checkUserLogin(String email, String password) {
         Optional<Users> user = findUserByEmail(email);
 
-        if (user.isPresent()) {
-            return passwordEncoder.matches(password, user.get().getPasswordHash());
-        }
+        String emailLogged = user.get().getEmail();
+        String passwordHash = user.get().getPasswordHash();
+        boolean status = user.get().isEnabled();
+        boolean validPassword = decryptPasswordUSer(password, passwordHash);
 
-        return false;
+        if (email.equals(emailLogged) && validPassword && status) {
+            return validPassword;
+        } else {
+            return false;
+        }
     }
 
     public Users saveUser(Users user) {
         //Validamos los datos
         if (validUserData(user)) {
             //Encriptamos la contraseña
-            user.setPasswordHash(encryptPasswordUser(user.getPasswordHash()));
+            String[] encryptionResult = encryptPasswordUser(user.getPasswordHash());
+            String passwordHashed = encryptionResult[0];
+            String salt = encryptionResult[1];
+
+            user.setPasswordHash(passwordHashed);
+            user.setSalt(salt);
 
             //Generamos el token
             String token = generateToken(user.getUsername());
@@ -65,10 +73,6 @@ public class UsersService {
         }
 
         return null;
-    }
-
-    private String encryptPasswordUser(String password) {
-        return passwordEncoder.encode(password);
     }
 
     private String generateToken(String username) {
@@ -84,6 +88,31 @@ public class UsersService {
                 || user.getRole() == null
                 || user.getEmail() == null && user.getUsername() == null
                 || user.getPasswordHash() == null && user.isEnabled());
+    }
+
+    private String[] encryptPasswordUser(String password) {
+        String salt = BCrypt.gensalt(12);
+        String encryptedPassword;
+
+        try {
+            encryptedPassword = BCrypt.hashpw(password, salt);
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace(System.err);
+            return null;
+        }
+
+        return new String[]{encryptedPassword, salt};
+    }
+
+    private boolean decryptPasswordUSer(String password, String passwordHashed) {
+        boolean decryptedPassword = false;
+
+        try {
+            decryptedPassword = BCrypt.checkpw(password, passwordHashed);
+        } catch (Exception e) {
+        }
+
+        return decryptedPassword;
     }
 
 }
